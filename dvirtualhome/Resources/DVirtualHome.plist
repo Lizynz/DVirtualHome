@@ -53,7 +53,6 @@
 				<string>Lock Button</string>
 				<string>Switcher</string>
 				<string>Reachability</string>
-				<string>Siri</string>
 				<string>Screenshot</string>
 				<string>Control Center</string>
 				<string>Notification Center</string>
@@ -68,7 +67,6 @@
 				<integer>1</integer>
 				<integer>2</integer>
 				<integer>3</integer>
-				<integer>4</integer>
 				<integer>5</integer>
 				<integer>6</integer>
 				<integer>7</integer>
@@ -99,7 +97,6 @@
 				<string>Lock Button</string>
 				<string>Switcher</string>
 				<string>Reachability</string>
-				<string>Siri</string>
 				<string>Screenshot</string>
 				<string>Control Center</string>
 				<string>Notification Center</string>
@@ -114,7 +111,6 @@
 				<integer>1</integer>
 				<integer>2</integer>
 				<integer>3</integer>
-				<integer>4</integer>
 				<integer>5</integer>
 				<integer>6</integer>
 				<integer>7</integer>
@@ -145,7 +141,6 @@
 				<string>Lock Button</string>
 				<string>Switcher</string>
 				<string>Reachability</string>
-				<string>Siri</string>
 				<string>Screenshot</string>
 				<string>Control Center</string>
 				<string>Notification Center</string>
@@ -160,7 +155,6 @@
 				<integer>1</integer>
 				<integer>2</integer>
 				<integer>3</integer>
-				<integer>4</integer>
 				<integer>5</integer>
 				<integer>6</integer>
 				<integer>7</integer>
@@ -191,7 +185,6 @@
 				<string>Lock Button</string>
 				<string>Switcher</string>
 				<string>Reachability</string>
-				<string>Siri</string>
 				<string>Screenshot</string>
 				<string>Control Center</string>
 				<string>Notification Center</string>
@@ -206,7 +199,6 @@
 				<integer>1</integer>
 				<integer>2</integer>
 				<integer>3</integer>
-				<integer>4</integer>
 				<integer>5</integer>
 				<integer>6</integer>
 				<integer>7</integer>

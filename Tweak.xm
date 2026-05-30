@@ -23,7 +23,7 @@ static void preferencesChanged() {
 		singleTapAction = [prefs objectForKey:@"singleTapAction"] ? (Action)[[prefs objectForKey:@"singleTapAction"] intValue] : home;
 		doubleTapAction = [prefs objectForKey:@"doubleTapAction"] ? (Action)[[prefs objectForKey:@"doubleTapAction"] intValue] : switcher;
 		longHoldAction =  [prefs objectForKey:@"longHoldAction"] ? (Action)[[prefs objectForKey:@"longHoldAction"] intValue] : reachability;
-		tapAndHoldAction =  [prefs objectForKey:@"tapAndHoldAction"] ? (Action)[[prefs objectForKey:@"tapAndHoldAction"] intValue] : siri;
+		tapAndHoldAction =  [prefs objectForKey:@"tapAndHoldAction"] ? (Action)[[prefs objectForKey:@"tapAndHoldAction"] intValue] : cc;
 		isVibrationEnabled =  [prefs objectForKey:@"isVibrationEnabled"] ? [[prefs objectForKey:@"isVibrationEnabled"] boolValue] : YES;
 		vibrationIntensity =  [prefs objectForKey:@"vibrationIntensity"] ? [[prefs objectForKey:@"vibrationIntensity"] floatValue] : 0.75;
 		vibrationDuration =  [prefs objectForKey:@"vibrationDuration"] ? [[prefs objectForKey:@"vibrationDuration"] intValue] : 30;
@@ -48,25 +48,9 @@ static BOOL isLongPressGestureActive = NO;
 static int notify_token = 0;
 static BOOL disableActionsForScreenOff = NO;
 
-%hook SBDashBoardViewController
--(void)biometricEventMonitor:(id)arg1 handleBiometricEvent:(NSUInteger)arg2 { // iOS 10 - 10.1
-	%orig(arg1, arg2);
-
-	// Touch Up or Down
-	disableActions = arg2 != 0 && arg2 != 1;
-}
-
--(void)handleBiometricEvent:(NSUInteger)arg1 { // iOS 10.2 - 12
-	%orig(arg1);
-
-	// Touch Up or Down
-	disableActions = arg1 != 0 && arg1 != 1;
-}
-%end
-
 %group iOS13plus
 %hook _SBTransientOverlayPresentedEntity
--(void)setDisableAutoUnlockAssertion:(id)arg1 {
+- (void)setDisableAutoUnlockAssertion:(id)arg1 {
 	%orig(arg1);
 
 	// during biometric authentication this is what is called to disable auto unlocking so we can disable actions
@@ -108,7 +92,7 @@ static NSString *currentApplicationIdentifier = nil;
 %property (nonatomic, retain) NSString *lastApplicationIdentifier;
 %property (nonatomic, retain) NSString *currentApplicationIdentifier;
 
--(void)frontDisplayDidChange:(id)arg1 {
+- (void)frontDisplayDidChange:(id)arg1 {
 	%orig;
 
 	if (arg1 != nil && [arg1 isKindOfClass:%c(SBApplication)]) {
@@ -127,7 +111,7 @@ static NSString *currentApplicationIdentifier = nil;
 %property(retain,nonatomic) UILongPressGestureRecognizer *tapAndHoldTapGestureRecognizer;
 %property(retain,nonatomic) UILongPressGestureRecognizer *vibrationGestureRecognizer;
 
--(void)dealloc {
+- (void)dealloc {
 	[self.singleTapGestureRecognizer release];
 	self.singleTapGestureRecognizer = nil;
 	[self.longTapGestureRecognizer release];
@@ -142,7 +126,7 @@ static NSString *currentApplicationIdentifier = nil;
 
 %hook SBHomeHardwareButton
 %new
--(void)performAction:(Action)action {
+- (void)performAction:(Action)action {
 	if (disableActions)
 		return; // do nothing since we are in middle of authentication
 
@@ -156,53 +140,15 @@ static NSString *currentApplicationIdentifier = nil;
 		[(SpringBoard *)[UIApplication sharedApplication] _simulateLockButtonPress];
 	} else if (action == switcher) {
 		id topDisplay = [(SpringBoard *)[UIApplication sharedApplication] _accessibilityTopDisplay];
-		if (![topDisplay isKindOfClass:%c(SBPowerDownController)] && ![topDisplay isKindOfClass:%c(SBPowerDownViewController)] && ![topDisplay isKindOfClass:%c(SBDashBoardViewController)] && ![topDisplay isKindOfClass:%c(CSCoverSheetViewController)] && (%c(SBCoverSheetPresentationManager) == nil || [[%c(SBCoverSheetPresentationManager) sharedInstance] hasBeenDismissedSinceKeybagLock])) {
-			SBMainSwitcherViewController *mainSwitcherViewController = [%c(SBMainSwitcherViewController) sharedInstance];
-			if ([mainSwitcherViewController respondsToSelector:@selector(toggleSwitcherNoninteractively)])
-				[mainSwitcherViewController toggleSwitcherNoninteractively];
-			else if ([mainSwitcherViewController respondsToSelector:@selector(toggleSwitcherNoninteractivelyWithSource:)])
-				[mainSwitcherViewController toggleSwitcherNoninteractivelyWithSource:1];
-			else if ([mainSwitcherViewController respondsToSelector:@selector(toggleMainSwitcherNoninteractivelyWithSource:animated:)])
-				[mainSwitcherViewController toggleMainSwitcherNoninteractivelyWithSource:1 animated:YES];
+		if (![topDisplay isKindOfClass:%c(SBPowerDownViewController)] && ![topDisplay isKindOfClass:%c(CSCoverSheetViewController)] && (%c(SBCoverSheetPresentationManager) == nil || [[%c(SBCoverSheetPresentationManager) sharedInstance] hasBeenDismissedSinceKeybagLock])) {
+			
+            //Switcher
+            if ([(SBUIController *)[%c(SBUIController) sharedInstance] respondsToSelector:@selector(handleHomeButtonDoublePressDown)]) {
+                [(SBUIController *)[%c(SBUIController) sharedInstance] handleHomeButtonDoublePressDown];
+            }
 		}
 	} else if (action == reachability) {
 		[[%c(SBReachabilityManager) sharedInstance] toggleReachability];
-	} else if (action == siri) {
-		SBAssistantController *_assistantController = [%c(SBAssistantController) sharedInstance];
-		if ([%c(SBAssistantController) respondsToSelector:@selector(isAssistantVisible)]) {
-			if ([%c(SBAssistantController) isAssistantVisible]) {
-				[_assistantController dismissPluginForEvent:1];
-			} else {
-				[_assistantController handleSiriButtonDownEventFromSource:1 activationEvent:1];
-				[_assistantController handleSiriButtonUpEventFromSource:1];
-			}
-		} else if ([%c(SBAssistantController) respondsToSelector:@selector(isVisible)]) {
-			if ([%c(SBAssistantController) isVisible]) {
-				[_assistantController dismissAssistantViewIfNecessary];
-			} else {
-				SiriPresentationSpringBoardMainScreenViewController *presentation = MSHookIvar<SiriPresentationSpringBoardMainScreenViewController *>(_assistantController, "_mainScreenSiriPresentation");
-
-				SiriPresentationOptions *presentationOptions = [[%c(SiriPresentationOptions) alloc] init];
-				presentationOptions.wakeScreen = YES;
-				presentationOptions.hideOtherWindowsDuringAppearance = NO;
-
-				SASRequestOptions *requestOptions = [[%c(SASRequestOptions) alloc] initWithRequestSource:1 uiPresentationIdentifier:@"com.apple.siri.Siriland"];
-				requestOptions.useAutomaticEndpointing = YES;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnonnull"
-				AFApplicationInfo *applicationInfo = [[%c(AFApplicationInfo) alloc] initWithCoder:nil];
-#pragma clang diagnostic pop
-				applicationInfo.pid = [NSProcessInfo processInfo].processIdentifier;
-				applicationInfo.identifier = [NSBundle mainBundle].bundleIdentifier;
-				requestOptions.contextAppInfosForSiriViewController = @[applicationInfo];
-
-				[presentation presentationRequestedWithPresentationOptions:presentationOptions requestOptions:requestOptions];
-
-				[presentationOptions release];
-				[requestOptions release];
-				[applicationInfo release];
-			}
-		}
 	} else if (action == screenshot) {
 		SpringBoard *_springboard = (SpringBoard *)[UIApplication sharedApplication];
 		if ([_springboard respondsToSelector:@selector(takeScreenshot)])
@@ -211,7 +157,7 @@ static NSString *currentApplicationIdentifier = nil;
 			[[_springboard screenshotManager] saveScreenshotsWithCompletion:nil];
 	} else if (action == cc) {
 		id topDisplay = [(SpringBoard *)[UIApplication sharedApplication] _accessibilityTopDisplay];
-		if (![topDisplay isKindOfClass:%c(SBPowerDownController)] && ![topDisplay isKindOfClass:%c(SBPowerDownViewController)]) {
+		if (![topDisplay isKindOfClass:%c(SBPowerDownViewController)]) {
 			SBControlCenterController *_ccController = [%c(SBControlCenterController) sharedInstance];
 			if ([_ccController isVisible])
 				[_ccController dismissAnimated:YES];
@@ -220,7 +166,7 @@ static NSString *currentApplicationIdentifier = nil;
 		}
 	} else if (action == nc) {
 		id topDisplay = [(SpringBoard *)[UIApplication sharedApplication] _accessibilityTopDisplay];
-		if (![topDisplay isKindOfClass:%c(SBPowerDownController)] && ![topDisplay isKindOfClass:%c(SBPowerDownViewController)] && ![topDisplay isKindOfClass:%c(SBDashBoardViewController)] && ![topDisplay isKindOfClass:%c(CSCoverSheetViewController)]) {
+		if (![topDisplay isKindOfClass:%c(SBPowerDownViewController)] && ![topDisplay isKindOfClass:%c(CSCoverSheetViewController)]) {
 			if (%c(SBCoverSheetPresentationManager) && [%c(SBCoverSheetPresentationManager) respondsToSelector:@selector(sharedInstance)]) {
 				SBCoverSheetPresentationManager *_csController = [%c(SBCoverSheetPresentationManager) sharedInstance];
 				if (_csController != nil && [[%c(SBCoverSheetPresentationManager) sharedInstance] hasBeenDismissedSinceKeybagLock]) {
@@ -253,7 +199,7 @@ static NSString *currentApplicationIdentifier = nil;
 		}
 	} else if (action == lastApp) {
 		id topDisplay = [(SpringBoard *)[UIApplication sharedApplication] _accessibilityTopDisplay];
-		if (![topDisplay isKindOfClass:%c(SBPowerDownController)] && ![topDisplay isKindOfClass:%c(SBPowerDownViewController)] && ![topDisplay isKindOfClass:%c(SBDashBoardViewController)] && ![topDisplay isKindOfClass:%c(CSCoverSheetViewController)] && (%c(SBCoverSheetPresentationManager) == nil || [[%c(SBCoverSheetPresentationManager) sharedInstance] hasBeenDismissedSinceKeybagLock])) {
+		if (![topDisplay isKindOfClass:%c(SBPowerDownViewController)] && ![topDisplay isKindOfClass:%c(CSCoverSheetViewController)] && (%c(SBCoverSheetPresentationManager) == nil || [[%c(SBCoverSheetPresentationManager) sharedInstance] hasBeenDismissedSinceKeybagLock])) {
 			// BOOL isApplication = [topDisplay isKindOfClass:%c(SBApplication)];
 			BOOL isApplication = [(SpringBoard *)[UIApplication sharedApplication] _accessibilityFrontMostApplication] != nil;
 			SBApplication *toApplication = [[%c(SBApplicationController) sharedInstance] applicationWithBundleIdentifier:isApplication ? lastApplicationIdentifier : currentApplicationIdentifier];
@@ -278,7 +224,7 @@ static NSString *currentApplicationIdentifier = nil;
 	}
 }
 
--(void)doubleTapUp:(id)arg1 {
+- (void)doubleTapUp:(id)arg1 {
 	if (isEnabled) {
 		[self performAction:doubleTapAction];
 	} else {
@@ -287,14 +233,14 @@ static NSString *currentApplicationIdentifier = nil;
 }
 
 %new
--(void)singleTapUp:(id)arg1 {
+- (void)singleTapUp:(id)arg1 {
 	if (isEnabled) {
 		[self performAction:singleTapAction];
 	}
 }
 
 %new
--(void)longTap:(UILongPressGestureRecognizer *)arg1 {
+- (void)longTap:(UILongPressGestureRecognizer *)arg1 {
 	if (isEnabled && arg1.state == UIGestureRecognizerStateBegan && !isLongPressGestureActive) {
 		[self performAction:longHoldAction];
 
@@ -306,7 +252,7 @@ static NSString *currentApplicationIdentifier = nil;
 }
 
 %new
--(void)tapAndHold:(UILongPressGestureRecognizer *)arg1 {
+- (void)tapAndHold:(UILongPressGestureRecognizer *)arg1 {
 	if (isEnabled && arg1.state == UIGestureRecognizerStateBegan) {
 		[self performAction:tapAndHoldAction];
 
@@ -318,7 +264,7 @@ static NSString *currentApplicationIdentifier = nil;
 }
 
 %new
--(void)vibrationTap:(UILongPressGestureRecognizer *)arg1 {
+- (void)vibrationTap:(UILongPressGestureRecognizer *)arg1 {
 	// taking advantage of the fact that vibration will be recognzied as soon as finger is on sensor
 	isLongPressGestureActive = NO;
 
@@ -328,7 +274,7 @@ static NSString *currentApplicationIdentifier = nil;
 }
 
 %new
--(void)createSingleTapGestureRecognizerWithConfiguration:(SBHomeHardwareButtonGestureRecognizerConfiguration *)arg1 {
+- (void)createSingleTapGestureRecognizerWithConfiguration:(SBHomeHardwareButtonGestureRecognizerConfiguration *)arg1 {
 	SBHBDoubleTapUpGestureRecognizer *_doubleTapUpGestureRecognizer = [arg1 doubleTapUpGestureRecognizer];
 	SBSystemGestureManager *_systemGestureManager = [arg1 systemGestureManager];
 
@@ -357,7 +303,7 @@ static NSString *currentApplicationIdentifier = nil;
 }
 
 %new
--(void)createLongTapGestureRecognizerWithConfiguration:(SBHomeHardwareButtonGestureRecognizerConfiguration *)arg1 {
+- (void)createLongTapGestureRecognizerWithConfiguration:(SBHomeHardwareButtonGestureRecognizerConfiguration *)arg1 {
 	SBHBDoubleTapUpGestureRecognizer *_doubleTapUpGestureRecognizer = [arg1 doubleTapUpGestureRecognizer];
 	SBSystemGestureManager *_systemGestureManager = [arg1 systemGestureManager];
 
@@ -384,7 +330,7 @@ static NSString *currentApplicationIdentifier = nil;
 }
 
 %new
--(void)createTapAndHoldGestureRecognizerWithConfiguration:(SBHomeHardwareButtonGestureRecognizerConfiguration *)arg1 {
+- (void)createTapAndHoldGestureRecognizerWithConfiguration:(SBHomeHardwareButtonGestureRecognizerConfiguration *)arg1 {
 	SBHBDoubleTapUpGestureRecognizer *_doubleTapUpGestureRecognizer = [arg1 doubleTapUpGestureRecognizer];
 	SBSystemGestureManager *_systemGestureManager = [arg1 systemGestureManager];
 
@@ -411,7 +357,7 @@ static NSString *currentApplicationIdentifier = nil;
 }
 
 %new
--(void)createVibrationGestureRecognizerWithConfiguration:(SBHomeHardwareButtonGestureRecognizerConfiguration *)arg1 {
+- (void)createVibrationGestureRecognizerWithConfiguration:(SBHomeHardwareButtonGestureRecognizerConfiguration *)arg1 {
 	SBHBDoubleTapUpGestureRecognizer *_doubleTapUpGestureRecognizer = [arg1 doubleTapUpGestureRecognizer];
 	SBSystemGestureManager *_systemGestureManager = [arg1 systemGestureManager];
 
@@ -436,7 +382,7 @@ static NSString *currentApplicationIdentifier = nil;
 	arg1.vibrationGestureRecognizer = _vibrationGestureRecognizer;
 }
 
--(void)_createGestureRecognizersWithConfiguration:(SBHomeHardwareButtonGestureRecognizerConfiguration *)arg1 {
+- (void)_createGestureRecognizersWithConfiguration:(SBHomeHardwareButtonGestureRecognizerConfiguration *)arg1 {
 	%orig(arg1);
 	[self createVibrationGestureRecognizerWithConfiguration:arg1];
 	[self createTapAndHoldGestureRecognizerWithConfiguration:arg1];
@@ -445,7 +391,7 @@ static NSString *currentApplicationIdentifier = nil;
 }
 
 
--(void)setGestureRecognizerConfiguration:(SBHomeHardwareButtonGestureRecognizerConfiguration *)arg1 {
+- (void)setGestureRecognizerConfiguration:(SBHomeHardwareButtonGestureRecognizerConfiguration *)arg1 {
 	%orig(arg1);
 	if (!arg1.vibrationGestureRecognizer) {
 		[self createVibrationGestureRecognizerWithConfiguration:arg1];
@@ -461,7 +407,7 @@ static NSString *currentApplicationIdentifier = nil;
 	}
 }
 
--(BOOL)gestureRecognizerShouldBegin:(id)arg1 {
+- (BOOL)gestureRecognizerShouldBegin:(id)arg1 {
 	SBHomeHardwareButtonGestureRecognizerConfiguration *_configuration = [self gestureRecognizerConfiguration];
 	UIHBClickGestureRecognizer *_singleTapGestureRecognizer = _configuration.singleTapGestureRecognizer;
 	UILongPressGestureRecognizer *_longTapGestureRecognizer = _configuration.longTapGestureRecognizer;
@@ -472,7 +418,7 @@ static NSString *currentApplicationIdentifier = nil;
 	return %orig(arg1);
 }
 
--(BOOL)gestureRecognizer:(id)arg1 shouldRecognizeSimultaneouslyWithGestureRecognizer:(id)arg2 {
+- (BOOL)gestureRecognizer:(id)arg1 shouldRecognizeSimultaneouslyWithGestureRecognizer:(id)arg2 {
 	SBHomeHardwareButtonGestureRecognizerConfiguration *_configuration = [self gestureRecognizerConfiguration];
 	UIHBClickGestureRecognizer *_singleTapGestureRecognizer = _configuration.singleTapGestureRecognizer;
 	UILongPressGestureRecognizer *_longTapGestureRecognizer = _configuration.longTapGestureRecognizer;
@@ -493,7 +439,7 @@ static NSString *currentApplicationIdentifier = nil;
 %end
 
 %hook SBReachabilityManager
-+(BOOL)reachabilitySupported {
++ (BOOL)reachabilitySupported {
 	return isEnabled ? YES : %orig();
 }
 %end
