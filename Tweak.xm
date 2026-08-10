@@ -155,16 +155,35 @@ static NSString *currentApplicationIdentifier = nil;
 			[_springboard takeScreenshot];
 		else
 			[[_springboard screenshotManager] saveScreenshotsWithCompletion:nil];
-	} else if (action == cc) {
-		id topDisplay = [(SpringBoard *)[UIApplication sharedApplication] _accessibilityTopDisplay];
-		if (![topDisplay isKindOfClass:%c(SBPowerDownViewController)]) {
-			SBControlCenterController *_ccController = [%c(SBControlCenterController) sharedInstance];
-			if ([_ccController isVisible])
-				[_ccController dismissAnimated:YES];
-			else
-				[_ccController presentAnimated:YES];
-		}
-	} else if (action == nc) {
+    } else if (action == cc) {
+        id topDisplay =
+        [(SpringBoard *)[UIApplication sharedApplication]
+         _accessibilityTopDisplay];
+        
+        if (![topDisplay isKindOfClass:%c(SBPowerDownViewController)]) {
+            
+            if (@available(iOS 26, *)) {
+                
+                SBControlCenterCoordinator *ccCoordinator =
+                [%c(SBControlCenterCoordinator) sharedInstance];
+                
+                if ([ccCoordinator isVisible])
+                    [ccCoordinator dismissAnimated:YES];
+                else
+                    [ccCoordinator presentAnimated:YES];
+                
+            } else {
+                
+                SBControlCenterController *_ccController =
+                [%c(SBControlCenterController) sharedInstance];
+                
+                if ([_ccController isVisible])
+                    [_ccController dismissAnimated:YES];
+                else
+                    [_ccController presentAnimated:YES];
+            }
+        }
+    } else if (action == nc) {
 		id topDisplay = [(SpringBoard *)[UIApplication sharedApplication] _accessibilityTopDisplay];
 		if (![topDisplay isKindOfClass:%c(SBPowerDownViewController)] && ![topDisplay isKindOfClass:%c(CSCoverSheetViewController)]) {
 			if (%c(SBCoverSheetPresentationManager) && [%c(SBCoverSheetPresentationManager) respondsToSelector:@selector(sharedInstance)]) {

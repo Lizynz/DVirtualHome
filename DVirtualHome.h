@@ -58,7 +58,14 @@ static NSInteger vibrationDuration = 30;
 - (UIInterfaceOrientation)_frontMostAppOrientation;
 @end
 
-@interface SBControlCenterController
+@interface SBControlCenterController // ≤ iOS 18
++ (id)sharedInstance;
+- (BOOL)isVisible;
+- (void)dismissAnimated:(BOOL)arg1;
+- (void)presentAnimated:(BOOL)arg1;
+@end
+
+@interface SBControlCenterCoordinator // iOS 26
 + (id)sharedInstance;
 - (BOOL)isVisible;
 - (void)dismissAnimated:(BOOL)arg1;
